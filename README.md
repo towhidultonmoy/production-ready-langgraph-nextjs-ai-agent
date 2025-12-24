@@ -1,7 +1,9 @@
-# Ally
+# Ally - Your AI Agent
 ### The Production-Ready LangGraph Agent for Next.js
 
 A production-ready AI agent template built with **Next.js**, **LangGraph**, **Linkup**, and **Supabase**. Features real-time streaming responses, deep observability with **LangSmith**, web search capabilities, persistent conversation history, and a modern generative UI.
+
+![LangChain Chatbot UI](public/assets/ui-screenshot.png)
 
 ## 🚀 Features
 
