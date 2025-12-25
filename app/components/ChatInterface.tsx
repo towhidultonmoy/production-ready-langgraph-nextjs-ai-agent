@@ -38,6 +38,9 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
   const activeThreadRef = useRef<string>("");
   const sendingThreadIdRef = useRef<string | null>(null);
   const sourcesRef = useRef<Source[]>([]);
+  const streamingContentEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
 
   // Initialize sidebar state based on screen size
   useEffect(() => {
@@ -61,13 +64,47 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
     activeThreadRef.current = currentThreadId;
   }, [currentThreadId]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    // Consider "at bottom" if within 50px of the bottom
+    const isBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setIsUserAtBottom(isBottom);
   };
 
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    // If user is not at bottom and we are just streaming, don't force scroll
+    // But if it's a new message (behavior="smooth" usually implies new message logic here), we might force it
+    // For now, strict 'stick to bottom' logic: only scroll if user was already at bottom
+    if (!isUserAtBottom) return;
+
+    if (streamingMessage && streamingContentEndRef.current) {
+      streamingContentEndRef.current.scrollIntoView({ behavior });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
+  };
+
+  // Auto-scroll when messages change (new message sent/received)
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, streamingMessage]);
+    // For new messages, we generally want to force scroll or at least try
+    // But to respect "reading history", let's check:
+    // If it's the user's own message, we MUST scroll.
+    // If it's an incoming message...
+
+    // Simplification: logic inside scrollToBottom handles the "stickiness"
+    // We just trigger it.
+    // Note: When sending a message, we should force isUserAtBottom to true manually
+    // This is handled in handleSendMessage
+    scrollToBottom("smooth");
+  }, [messages]);
+
+  // Auto-scroll during streaming (INSTANT to avoid vibration)
+  useEffect(() => {
+    if (streamingMessage) {
+      scrollToBottom("auto");
+    }
+  }, [streamingMessage]);
 
   // Load history when session changes
   useEffect(() => {
@@ -105,6 +142,9 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
       content,
       id: Date.now().toString(),
     };
+
+    setIsUserAtBottom(true); // Force scroll to bottom when sending
+
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -321,7 +361,7 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative min-w-0 w-full h-full bg-zinc-950 transition-all duration-300">
         {/* Header */}
-        <div className="p-4 md:p-6 border-b border-zinc-900 bg-zinc-950/95 backdrop-blur-sm sticky top-0 z-10 flex items-center justify-between">
+        <div className="p-3 md:p-6 border-b border-zinc-900 bg-zinc-950/95 backdrop-blur-sm sticky top-0 z-10 flex items-center justify-between">
           <div className="flex items-center space-x-3 md:space-x-4">
             {/* Sidebar Toggle Button (Mobile & Desktop) */}
             <button
@@ -351,19 +391,23 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
             {messages.length > 0 && (
               <button
                 onClick={handleNewChat}
-                className="hidden md:flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-white hover:bg-zinc-900 rounded-lg transition-smooth border border-zinc-800 hover:border-zinc-700 hover-lift"
+                className="flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-white hover:bg-zinc-900 rounded-lg transition-smooth border border-zinc-800 hover:border-zinc-700 hover-lift"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>New</span>
+                <span className="hidden md:inline">New</span>
               </button>
             )}
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 custom-scrollbar flex flex-col bg-zinc-950">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-3 md:p-6 space-y-6 md:space-y-8 custom-scrollbar flex flex-col bg-zinc-950"
+        >
           {!isDataLoaded ? (
             <div className="flex-1 flex items-center justify-center"></div> // hydration spacer
           ) : isHistoryLoading && messages.length === 0 && !streamingMessage ? (
@@ -381,7 +425,7 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
               <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-2 md:mb-4 tracking-tight">
                 Hello, I'm Ally.
               </h2>
-              <p className="text-zinc-400 text-sm md:text-base max-w-md mx-auto mb-8">
+              <p className="text-zinc-400 text-sm md:text-base max-w-md mx-auto mb-8 px-4">
                 What would you like to achieve today?
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 max-w-2xl w-full px-2 md:px-4 mt-6 md:mt-8">
@@ -408,9 +452,9 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
                 >
-                  <div className={`flex items-start gap-6 md:gap-12 max-w-[95%] md:max-w-[85%] min-w-0 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                  <div className={`flex items-start gap-3 md:gap-12 max-w-[95%] md:max-w-[85%] min-w-0 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
                     {/* Avatars */}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${message.role === "user"
+                    <div className={`hidden md:flex w-8 h-8 rounded-lg items-center justify-center flex-shrink-0 border ${message.role === "user"
                       ? "bg-white text-black border-white"
                       : "bg-black border-zinc-800 text-white"
                       }`}>
@@ -429,6 +473,41 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
                       ? "bg-zinc-800 text-white shadow-lg border border-zinc-700/50"
                       : "bg-transparent text-zinc-100"
                       }`}>
+
+                      {/* Sources Section - MOVED TO TOP */}
+                      {message.role === "assistant" && message.sources && message.sources.length > 0 && (
+                        <div className="mb-4 pb-4 border-b border-zinc-900">
+                          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Sources
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {message.sources.map((source, idx) => (
+                              <a
+                                key={idx}
+                                href={source.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                id={`source-${idx + 1}-${message.id}`}
+                                className="group/source flex items-center gap-2 px-2.5 py-1.5 bg-zinc-900/50 border border-zinc-800/50 rounded-lg hover:border-zinc-700 hover:bg-zinc-900 transition-all duration-200"
+                              >
+                                <span className="flex-shrink-0 w-4 h-4 rounded bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-zinc-500 group-hover/source:bg-white group-hover/source:text-black transition-colors">
+                                  {idx + 1}
+                                </span>
+                                <span className="text-[11px] text-zinc-400 group-hover/source:text-zinc-200 truncate max-w-[120px] md:max-w-[180px]">
+                                  {source.title}
+                                </span>
+                                <svg className="w-2.5 h-2.5 text-zinc-700 group-hover/source:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="prose prose-sm max-w-none prose-invert leading-relaxed">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
@@ -466,40 +545,6 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
                             : message.content}
                         </ReactMarkdown>
                       </div>
-
-                      {/* Sources Section */}
-                      {message.role === "assistant" && message.sources && message.sources.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-zinc-900">
-                          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                            </svg>
-                            Sources
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {message.sources.map((source, idx) => (
-                              <a
-                                key={idx}
-                                href={source.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                id={`source-${idx + 1}-${message.id}`}
-                                className="group/source flex items-center gap-2 px-2.5 py-1.5 bg-zinc-900/50 border border-zinc-800/50 rounded-lg hover:border-zinc-700 hover:bg-zinc-900 transition-all duration-200"
-                              >
-                                <span className="flex-shrink-0 w-4 h-4 rounded bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-zinc-500 group-hover/source:bg-white group-hover/source:text-black transition-colors">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-[11px] text-zinc-400 group-hover/source:text-zinc-200 truncate max-w-[120px] md:max-w-[180px]">
-                                  {source.title}
-                                </span>
-                                <svg className="w-2.5 h-2.5 text-zinc-700 group-hover/source:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                </svg>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -524,6 +569,33 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
                       {agentStatus && (
                         <div className="mb-2">
                           <StatusIndicator status={agentStatus} />
+                        </div>
+                      )}
+
+                      {/* Sources Section (shown as soon as they are found) */}
+                      {currentSources.length > 0 && (
+                        <div className="mb-4 pb-4 border-b border-zinc-900">
+                          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Sources found
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {currentSources.map((source, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 px-2.5 py-1.5 bg-zinc-900/30 border border-zinc-800/30 rounded-lg"
+                              >
+                                <span className="flex-shrink-0 w-4 h-4 rounded bg-zinc-800/50 flex items-center justify-center text-[9px] font-bold text-zinc-600">
+                                  {idx + 1}
+                                </span>
+                                <span className="text-[11px] text-zinc-500 truncate max-w-[120px] md:max-w-[180px]">
+                                  {source.title}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -562,32 +634,7 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
                         </div>
                       )}
 
-                      {/* Sources Section (shown as soon as they are found) */}
-                      {currentSources.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-zinc-900">
-                          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                            </svg>
-                            Sources found
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {currentSources.map((source, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2 px-2.5 py-1.5 bg-zinc-900/30 border border-zinc-800/30 rounded-lg"
-                              >
-                                <span className="flex-shrink-0 w-4 h-4 rounded bg-zinc-800/50 flex items-center justify-center text-[9px] font-bold text-zinc-600">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-[11px] text-zinc-500 truncate max-w-[120px] md:max-w-[180px]">
-                                  {source.title}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <div ref={streamingContentEndRef} />
 
                       {agentStatus === "generating" && !streamingMessage && (
                         <span className="inline-block w-1.5 h-1.5 bg-white rounded-full animate-bounce mt-2"></span>
@@ -606,7 +653,7 @@ export default function ChatInterface({ apiKey: initialApiKey }: { apiKey?: stri
         </div>
 
         {/* Input Area */}
-        <div className="p-4 md:p-6 bg-zinc-950 border-t border-zinc-900 z-10">
+        <div className="p-3 md:p-6 bg-zinc-950 border-t border-zinc-900 z-10 pb-6 md:pb-6">
           <ChatInput onSendMessage={handleSendMessage} disabled={streamingThreadId === currentThreadId} />
           <p className="mt-3 text-center text-[10px] text-zinc-600 font-medium uppercase tracking-wider">
             AI can make mistakes. Verify important information.

@@ -47,7 +47,7 @@ export default function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
             placeholder="Type your message... (Shift + Enter for new line)"
             disabled={disabled}
             rows={1}
-            className="w-full px-4 py-3 pr-12 border border-zinc-700 bg-zinc-900 text-white rounded-lg focus:outline-none focus:border-zinc-500 disabled:bg-zinc-800 disabled:text-zinc-600 resize-none transition-all placeholder-zinc-600"
+            className="w-full px-4 py-3 pr-12 border border-zinc-700 bg-zinc-900 text-white rounded-lg focus:outline-none focus:border-zinc-500 disabled:bg-zinc-800 disabled:text-zinc-600 resize-none transition-all placeholder-zinc-600 text-base md:text-sm"
             style={{ minHeight: "48px", maxHeight: "200px" }}
           />
           <div className="absolute right-3 bottom-3 text-xs text-zinc-600">
@@ -57,7 +57,7 @@ export default function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
         <button
           type="submit"
           disabled={disabled || !input.trim()}
-          className="px-4 py-3 bg-white text-black font-semibold rounded-lg focus:outline-none disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-smooth flex items-center justify-center hover:bg-zinc-200 shadow-lg shadow-zinc-900/20"
+          className="px-4 py-3 bg-white text-black font-semibold rounded-lg focus:outline-none disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-smooth flex items-center justify-center hover:bg-zinc-200 shadow-lg shadow-zinc-900/20 active:scale-95"
         >
           <span className="mr-2">Send</span>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

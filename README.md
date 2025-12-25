@@ -5,6 +5,14 @@ A production-ready AI agent template built with **Next.js**, **LangGraph**, **Li
 
 ![LangChain Chatbot UI](public/assets/ui-screenshot.png)
 
+### 📺 Demo Video
+
+[![Ally AI Agent Demo](https://img.youtube.com/vi/dQ6IGiFpss8/0.jpg)](https://www.youtube.com/watch?v=dQ6IGiFpss8)
+
+[Watch the demo on YouTube](https://www.youtube.com/watch?v=dQ6IGiFpss8)
+
+
+
 ## 🚀 Features
 
 -   **Agentic Intelligence**: Powered by LangGraph for stateful, multi-step reasoning and tool execution

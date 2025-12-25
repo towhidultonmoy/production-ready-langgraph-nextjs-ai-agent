@@ -41,21 +41,21 @@ export default function Sidebar({ currentThreadId, onSelectSession, onNewChat, o
     }, [currentThreadId]);
 
     // Mobile Overlay
-    const overlayClass = isOpen ? "fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm" : "hidden";
+    const overlayClass = isOpen ? "fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300" : "hidden";
 
     // Sidebar Container Class
     // Mobile: detailed fixed positioning. Desktop: relative with width transition.
     // Note: We use `overflow-hidden` to hide content when collapsed on desktop.
     const sidebarClass = `
-        fixed top-0 bottom-0 left-0 z-50 bg-black border-r border-zinc-800 transition-all duration-300 ease-in-out
-        w-80 flex-shrink-0 overflow-hidden
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        md:translate-x-0 md:relative md:z-0
+        fixed top-0 bottom-0 left-0 z-50 bg-black border-r border-zinc-800 transition-transform duration-300 ease-in-out
+        w-72 md:w-80 flex-shrink-0 overflow-hidden
+        ${isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}
+        md:translate-x-0 md:relative md:z-0 md:shadow-none
         ${isOpen ? "md:w-80 md:opacity-100" : "md:w-0 md:opacity-0 md:border-r-0"}
     `;
 
     // Inner content container - ensure it doesn't squash during transition
-    const innerContentClass = "flex flex-col h-full w-80";
+    const innerContentClass = "flex flex-col h-full w-full";
 
     return (
         <>
