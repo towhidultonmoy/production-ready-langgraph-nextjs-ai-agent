@@ -43,7 +43,7 @@ A production-ready AI agent template built with **Next.js**, **LangGraph**, **Li
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/yourusername/ai-agent-chatbot.git
+    git clone https://github.com/towhidultonmoy/ai-agent-chatbot.git
     cd ai-agent-chatbot
     ```
 
